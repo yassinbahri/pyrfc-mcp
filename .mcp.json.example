@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "sap-rfc-gateway": {
+      "command": "python",
+      "args": [
+        "-m",
+        "rfc_mcp"
+      ],
+      "env": {
+        "SAPNWRFC_HOME": "C:\\nwrfcsdk"
+      }
+    }
+  }
+}
