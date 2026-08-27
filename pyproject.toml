@@ -1,5 +1,5 @@
 [project]
-name = "rfc-mcp"
+name = "pyrfc-mcp"
 version = "0.1.0"
 description = "MCP server exposing SAP RFC-enabled function modules to AI agents"
 readme = "README.md"

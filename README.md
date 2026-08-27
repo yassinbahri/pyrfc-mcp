@@ -1,4 +1,4 @@
-# rfc-mcp
+# pyrfc-mcp
 
 MCP server exposing SAP RFC-enabled function modules (BAPIs/RFCs) to AI
 agents through a discovery-first interface, built on SAP's `pyrfc`
