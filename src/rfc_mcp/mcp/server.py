@@ -21,6 +21,7 @@ from rfc_mcp.config import AppSettings
 from rfc_mcp.discovery.catalog import FunctionCatalog
 from rfc_mcp.execution.invoker import ExecutionInvoker
 from rfc_mcp.execution.policy import ExecutionPolicy
+from rfc_mcp.execution.result_transform import ResultLimitPolicy
 from rfc_mcp.logging_config import configure_logging
 from rfc_mcp.sap.connection import ConnectionPool, PooledCaller
 
@@ -50,6 +51,10 @@ async def app_lifespan(server: MCPServer[AppContext]) -> AsyncIterator[AppContex
         catalog,
         policy,
         transaction_ttl_seconds=settings.transaction_ttl_seconds,
+        result_limits=ResultLimitPolicy(
+            max_table_rows=settings.result.max_table_rows,
+            max_serialized_bytes=settings.result.max_serialized_bytes,
+        ),
     )
     # Optional: None unless RFC_MCP_ADT_ENABLED=true. read_abap_source
     # doesn't need this to be set — it falls back to RFC automatically when

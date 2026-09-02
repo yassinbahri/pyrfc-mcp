@@ -18,7 +18,11 @@ from rfc_mcp.discovery.catalog import FunctionCatalog
 from rfc_mcp.execution import transaction
 from rfc_mcp.execution.param_mapper import build_call_kwargs
 from rfc_mcp.execution.policy import ExecutionPolicy
-from rfc_mcp.execution.result_transform import to_json_safe
+from rfc_mcp.execution.result_transform import (
+    ResultLimitExceededError,
+    ResultLimitPolicy,
+    to_json_safe,
+)
 from rfc_mcp.sap.connection import ConnectionPool
 from rfc_mcp.sap.exceptions import translate_pyrfc_exception
 
@@ -44,11 +48,13 @@ class ExecutionInvoker:
         policy: ExecutionPolicy,
         *,
         transaction_ttl_seconds: float = 300.0,
+        result_limits: ResultLimitPolicy | None = None,
     ) -> None:
         self._pool = pool
         self._catalog = catalog
         self._policy = policy
         self._transaction_ttl_seconds = transaction_ttl_seconds
+        self._result_limits = result_limits or ResultLimitPolicy()
         self._transactions: dict[str, _ActiveTransaction] = {}
         self._transactions_lock = threading.Lock()
 
@@ -64,7 +70,7 @@ class ExecutionInvoker:
         call_kwargs = build_call_kwargs(interface, parameters)
         with self._pool.acquire() as conn:
             result = self._call_on_connection(conn, function_name, call_kwargs, mode)
-        return to_json_safe(result)
+        return self._apply_result_limits(function_name, mode, result)
 
     def call_transactional(
         self,
@@ -96,18 +102,19 @@ class ExecutionInvoker:
             if not self._is_current_transaction(tx_id, active):
                 raise TransactionNotFoundError(self._transaction_error(tx_id))
             try:
-                result = self._call_on_connection(
+                raw_result = self._call_on_connection(
                     active.connection,
                     function_name,
                     call_kwargs,
                     mode,
                     transaction_id=tx_id,
                 )
+                result = self._apply_result_limits(function_name, mode, raw_result)
             except Exception:
                 self._discard_transaction(tx_id, active)
                 raise
             active.last_used = time.monotonic()
-        return to_json_safe(result), tx_id
+        return result, tx_id
 
     def commit(self, transaction_id: str, wait: bool = False) -> dict[str, Any]:
         self._policy.authorize_transaction_control()
@@ -166,6 +173,19 @@ class ExecutionInvoker:
             transaction_id,
         )
         return result
+
+    def _apply_result_limits(self, function_name: str, mode: str, result: Any) -> Any:
+        try:
+            return self._result_limits.apply(result)
+        except ResultLimitExceededError:
+            logger.warning(
+                "CALL RESULT BLOCKED function=%s mode=%s max_table_rows=%s max_serialized_bytes=%s",
+                function_name,
+                mode,
+                self._result_limits.max_table_rows,
+                self._result_limits.max_serialized_bytes,
+            )
+            raise
 
     def _get_or_create_transaction(
         self, transaction_id: str | None

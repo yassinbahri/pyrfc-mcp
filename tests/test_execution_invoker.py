@@ -10,6 +10,10 @@ from rfc_mcp.execution import invoker as invoker_module
 from rfc_mcp.execution.invoker import ExecutionInvoker, TransactionNotFoundError
 from rfc_mcp.execution.param_mapper import ParameterValidationError
 from rfc_mcp.execution.policy import ExecutionPolicy, PolicyDeniedError
+from rfc_mcp.execution.result_transform import (
+    ResultLimitExceededError,
+    ResultLimitPolicy,
+)
 from rfc_mcp.sap.exceptions import SAPError
 from tests.fakes.fake_pyrfc import FakeConnection
 from tests.fakes.sample_data import FUNCTION_INTERFACE_RESULT
@@ -83,6 +87,25 @@ def test_read_call_success_transforms_result():
     result = invoker.call("BAPI_CUSTOMER_GETDETAIL2", {"CUSTOMERNO": "1"}, "read")
 
     assert result == {"CUSTOMERDETAIL": {"CUSTOMER": "1"}}
+
+
+def test_read_call_blocks_oversized_result_without_logging_business_values(caplog):
+    conn = FakeConnection(
+        responses={"BAPI_CUSTOMER_GETDETAIL2": {"ROWS": [{"SECRET": "do-not-log"}]}}
+    )
+    invoker = ExecutionInvoker(
+        _FakePool(conn),
+        _catalog(_interface_caller()),
+        _read_policy(),
+        result_limits=ResultLimitPolicy(max_table_rows=1, max_serialized_bytes=10),
+    )
+
+    with pytest.raises(ResultLimitExceededError):
+        invoker.call("BAPI_CUSTOMER_GETDETAIL2", {"CUSTOMERNO": "1"}, "read")
+
+    assert "function=BAPI_CUSTOMER_GETDETAIL2" in caplog.text
+    assert "max_serialized_bytes=10" in caplog.text
+    assert "do-not-log" not in caplog.text
 
 
 def test_call_blocked_by_policy_never_touches_connection():
@@ -160,6 +183,22 @@ def test_multiple_writes_can_reuse_transaction_id():
     assert reused_id == tx_id
     invoker.rollback(tx_id)
     assert [name for name, _ in conn.calls][-1] == "BAPI_TRANSACTION_ROLLBACK"
+
+
+def test_oversized_write_result_discards_transaction():
+    conn = FakeConnection(responses={"BAPI_CUSTOMER_GETDETAIL2": {"ROWS": [{"ID": 1}, {"ID": 2}]}})
+    pool = _FakePool(conn)
+    invoker = ExecutionInvoker(
+        pool,
+        _catalog(_interface_caller()),
+        _write_policy(),
+        result_limits=ResultLimitPolicy(max_table_rows=1),
+    )
+
+    with pytest.raises(ResultLimitExceededError):
+        invoker.call_transactional("BAPI_CUSTOMER_GETDETAIL2", {"CUSTOMERNO": "1"}, "write")
+
+    assert pool.releases == [(conn, False)]
 
 
 def test_completed_transaction_id_cannot_be_reused():
