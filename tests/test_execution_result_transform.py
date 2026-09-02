@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import json
 
-from rfc_mcp.execution.result_transform import to_json_safe
+import pytest
+
+from rfc_mcp.execution.result_transform import (
+    ResultLimitExceededError,
+    ResultLimitPolicy,
+    to_json_safe,
+)
 
 
 def test_scalars_pass_through():
@@ -35,3 +42,33 @@ def test_nested_structures_preserved():
 
 def test_bytes_decoded():
     assert to_json_safe(b"hello") == "hello"
+
+
+def test_result_policy_accepts_exact_recursive_row_boundary():
+    value = {"OUTER": [{"NESTED": [{"ID": 1}, {"ID": 2}]}]}
+
+    assert ResultLimitPolicy(max_table_rows=3).apply(value) == value
+
+
+def test_result_policy_rejects_cumulative_nested_rows_without_values():
+    value = {
+        "FIRST": [{"SECRET": "customer-a"}, {"SECRET": "customer-b"}],
+        "SECOND": [{"SECRET": "customer-c"}],
+    }
+
+    with pytest.raises(ResultLimitExceededError) as exc_info:
+        ResultLimitPolicy(max_table_rows=2).apply(value)
+
+    message = str(exc_info.value)
+    assert "actual=3" in message
+    assert "limit=2" in message
+    assert "customer" not in message
+
+
+def test_result_policy_counts_multibyte_text_as_utf8_bytes():
+    value = {"TEXT": "🦊"}
+    compact_size = len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+    assert ResultLimitPolicy(max_serialized_bytes=compact_size).apply(value) == value
+    with pytest.raises(ResultLimitExceededError, match=f"actual={compact_size}, limit="):
+        ResultLimitPolicy(max_serialized_bytes=compact_size - 1).apply(value)

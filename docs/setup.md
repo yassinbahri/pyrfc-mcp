@@ -98,3 +98,11 @@ function policy allowlist before enabling `mode="write"` calls.
 The default allowlists are empty. The example permits only discovery,
 source-reading helpers, and `STFC_CONNECTION`; add business RFCs explicitly
 with SAP Basis review and matching least-privilege SAP authorizations.
+
+The response limits in `.env.example` apply equally to read and transactional
+write calls. Exceeding either limit raises an explicit error; results are never
+silently truncated. Table rows are counted cumulatively through nested lists,
+and the byte limit uses the compact UTF-8 JSON representation returned through
+MCP. These limits bound what reaches the MCP client, but the RFC has already run
+inside SAP by the time its response can be measured. Use RFC-specific selection
+or pagination parameters as an additional upstream safeguard where available.

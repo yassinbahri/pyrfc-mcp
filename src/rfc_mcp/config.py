@@ -14,6 +14,15 @@ class PolicyMode(StrEnum):
     READ_WRITE = "read_write"
 
 
+class ResultLimitSettings(BaseSettings):
+    """Bound RFC results before they are returned to an MCP consumer."""
+
+    model_config = SettingsConfigDict(env_prefix="RFC_MCP_RESULT_", env_file=".env", extra="ignore")
+
+    max_table_rows: int = Field(default=10_000, ge=1, le=1_000_000)
+    max_serialized_bytes: int = Field(default=1_048_576, ge=1_024, le=100_000_000)
+
+
 class SAPConnectionSettings(BaseSettings):
     """Connection parameters for pyrfc.Connection.
 
@@ -277,4 +286,5 @@ class AppSettings(BaseSettings):
 
     sap: SAPConnectionSettings = Field(default_factory=SAPConnectionSettings)  # type: ignore[arg-type]
     policy: PolicySettings = Field(default_factory=PolicySettings)
+    result: ResultLimitSettings = Field(default_factory=ResultLimitSettings)
     adt: ADTConnectionSettings = Field(default_factory=ADTConnectionSettings)

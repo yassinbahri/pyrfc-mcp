@@ -51,7 +51,8 @@ ABAP language knowledge on hand. It's licensed separately (GPL-3.0, its own
 Foundation, connection layer, discovery, execution, and MCP integration are
 built and tested, including a deny-by-default read/write policy, a table-level guard
 against the generic-table-reader injection surface (`RFC_READ_TABLE` et
-al.), and audit logging of every policy decision and call outcome. Not
+al.), fail-closed RFC response limits, and audit logging of every policy
+decision and call outcome. Not
 built: multi-tenant auth/RBAC beyond the single server-wide policy, rate
 limiting, metrics/tracing, and deployment packaging — see
 [docs/architecture.md](docs/architecture.md)'s "Out of scope" section for
@@ -72,6 +73,11 @@ connection; abandoned transactions expire and roll back automatically.
 - Stdio credentials come from the environment and are never placed in MCP
   tool arguments. Do not expose the server over HTTP without implementing the
   MCP authorization specification and deployment-level rate limiting.
+- RFC results are rejected rather than silently truncated when their cumulative
+  nested table rows or serialized UTF-8 JSON size exceed
+  `RFC_MCP_RESULT_MAX_TABLE_ROWS` or
+  `RFC_MCP_RESULT_MAX_SERIALIZED_BYTES`. These limits protect MCP consumers;
+  they cannot reduce work already performed inside SAP.
 - See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
 
 ## License

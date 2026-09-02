@@ -7,6 +7,7 @@ from rfc_mcp.config import (
     ADTConnectionSettings,
     PolicyMode,
     PolicySettings,
+    ResultLimitSettings,
     SAPConnectionSettings,
 )
 
@@ -141,3 +142,19 @@ def test_default_deny_patterns_block_mutating_names_even_for_reads():
 def test_policy_denies_reads_by_default():
     policy = PolicySettings()
     assert not policy.is_read_allowed("STFC_CONNECTION")
+
+
+def test_result_limits_have_conservative_defaults():
+    settings = ResultLimitSettings()
+    assert settings.max_table_rows == 10_000
+    assert settings.max_serialized_bytes == 1_048_576
+
+
+def test_result_limits_load_from_environment(monkeypatch):
+    monkeypatch.setenv("RFC_MCP_RESULT_MAX_TABLE_ROWS", "25")
+    monkeypatch.setenv("RFC_MCP_RESULT_MAX_SERIALIZED_BYTES", "4096")
+
+    settings = ResultLimitSettings()
+
+    assert settings.max_table_rows == 25
+    assert settings.max_serialized_bytes == 4096
