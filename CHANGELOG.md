@@ -6,6 +6,8 @@ All notable changes will be documented here. This project follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-04
+
 ### Added
 
 - Connection-affine SAP transactions with opaque IDs, expiry, and shutdown rollback.
