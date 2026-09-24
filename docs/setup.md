@@ -65,6 +65,16 @@ uv sync --extra dev
 This installs the MCP server, test, lint, typing, and build tools without
 attempting to install PyRFC.
 
+To evaluate the complete MCP flow without SAP, no further setup is required:
+
+```powershell
+uv run rfc-mcp doctor --demo --connect
+uv run rfc-mcp --demo
+```
+
+The demo records are synthetic. The discovery, parameter validation, policy,
+result-limit, and MCP layers are the same ones used by the SAP backend.
+
 ## 4. Enable the legacy SAP connector
 
 Only after installing and validating the SDK:
@@ -86,8 +96,15 @@ python -c "import pyrfc; print(pyrfc.__version__)"
 ```
 
 This succeeds with **no SAP system reachable** — it only proves the SDK
-linked correctly. Actual connectivity is a separate concern, validated later
-with `scripts/smoke_test.py` once real SAP credentials are available.
+linked correctly. The package also provides a redacted preflight command:
+
+```powershell
+uv run rfc-mcp doctor
+```
+
+It checks configuration and whether PyRFC plus the native SDK can load, but
+does not contact SAP. Add `--connect` only when you intend to perform a live
+ping. Use `--json` when consuming the report in automation.
 
 ## 6. Configure connection + policy
 
