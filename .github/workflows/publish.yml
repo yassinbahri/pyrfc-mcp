@@ -3,6 +3,7 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -46,4 +47,6 @@ jobs:
           name: python-package-distributions
           path: dist/
       - name: Publish distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26 # v1.14.2
+        # This Docker-based action resolves its container image from the ref;
+        # an immutable commit SHA has no corresponding registry tag.
+        uses: pypa/gh-action-pypi-publish@release/v1
