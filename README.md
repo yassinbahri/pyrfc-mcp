@@ -1,10 +1,34 @@
 # pyrfc-mcp
 
+[![CI](https://github.com/yassinbahri/pyrfc-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yassinbahri/pyrfc-mcp/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 MCP server exposing SAP RFC-enabled function modules (BAPIs/RFCs) to AI
 agents through a discovery-first interface, built on SAP's `pyrfc`
 connector — plus automatic ABAP source reading (ADT when reachable,
 transparent RFC fallback otherwise, see
 [docs/adt_rfc_integration_plan.md](docs/adt_rfc_integration_plan.md)).
+
+It is deny-by-default: discovering an RFC does not authorize calling it.
+Function allowlists, mutating-name deny rules, sensitive-table guards, result
+limits, and connection-affine transactions remain enforced at the server.
+
+## Try it without SAP
+
+The supported demo backend uses deterministic synthetic RFC metadata and
+business records. It exercises the real discovery, validation, authorization,
+result-limiting, and MCP tool layers; only the final SAP transport is replaced.
+
+```console
+python -m pip install pyrfc-mcp
+rfc-mcp doctor --demo --connect
+rfc-mcp --demo
+```
+
+No SAP account, PyRFC installation, or SAP NW RFC SDK is needed for demo mode.
+Configure an MCP client with the included [.mcp.json.example](.mcp.json.example)
+to explore it immediately.
 
 ## Setup
 
@@ -14,12 +38,14 @@ prerequisites (required before real SAP calls work) and
 including the read/write policy model, the generic-table-reader guard, and
 audit logging.
 
-Quick start once prerequisites are installed:
+For a real system, install the proprietary SDK prerequisites, then:
 
 ```powershell
 uv sync --extra dev
-copy .env.example .env   # fill in connection + policy settings
-uv run pytest             # unit tests, fake pyrfc, no SAP needed
+copy .env.example .env    # fill in connection + policy settings
+uv run rfc-mcp doctor     # validates config and native dependencies, no SAP call
+uv run rfc-mcp doctor --connect  # explicitly performs a live SAP ping
+uv run pytest             # unit tests, synthetic backend, no SAP needed
 uv run mcp dev src/rfc_mcp/mcp/server.py
 ```
 
@@ -27,6 +53,10 @@ Real SAP connectivity additionally requires the proprietary SAP NW RFC SDK
 and the archived/yanked `pyrfc==3.3.1` connector. Read the support warning
 and installation steps in [docs/setup.md](docs/setup.md) before running
 `uv sync --extra sap` or the smoke test.
+
+`doctor` intentionally redacts connection and credential values. It does not
+contact SAP unless `--connect` is present, and it also supports `--json` for
+automation.
 
 ## Tools
 
@@ -56,7 +86,7 @@ decision and call outcome. Not
 built: multi-tenant auth/RBAC beyond the single server-wide policy, rate
 limiting, metrics/tracing, and deployment packaging — see
 [docs/architecture.md](docs/architecture.md)'s "Out of scope" section for
-what's deliberately deferred and why.
+what’s deliberately deferred and why.
 
 Write calls return an opaque `transaction_id`. Reuse it for related writes,
 then pass it to commit or rollback. This pins the entire SAP LUW to one RFC

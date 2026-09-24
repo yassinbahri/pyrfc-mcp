@@ -36,8 +36,10 @@ jobs:
         run: python -m uv run ruff format --check src tests scripts
       - name: Type check
         run: python -m uv run mypy src
-      - name: Audit installed dependencies
-        run: python -m uv run pip-audit --local --skip-editable
+      - name: Export locked runtime dependencies
+        run: python -m uv export --frozen --no-dev --no-emit-project --output-file requirements-audit.txt
+      - name: Audit locked runtime dependencies
+        run: python -m uv run pip-audit --requirement requirements-audit.txt
       - name: Build and validate distributions
         run: |
           python -m uv build

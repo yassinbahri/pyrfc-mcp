@@ -14,6 +14,11 @@ class PolicyMode(StrEnum):
     READ_WRITE = "read_write"
 
 
+class BackendMode(StrEnum):
+    SAP = "sap"
+    DEMO = "demo"
+
+
 class ResultLimitSettings(BaseSettings):
     """Bound RFC results before they are returned to an MCP consumer."""
 
@@ -279,12 +284,21 @@ class ADTConnectionSettings(BaseSettings):
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="RFC_MCP_", env_file=".env", extra="ignore")
 
+    backend: BackendMode = BackendMode.SAP
     log_level: str = "INFO"
     discovery_cache_ttl_seconds: float = Field(default=300.0, gt=0)
     structure_resolution_max_depth: int = Field(default=8, ge=1, le=32)
     transaction_ttl_seconds: float = Field(default=300.0, gt=0, le=3600)
 
-    sap: SAPConnectionSettings = Field(default_factory=SAPConnectionSettings)  # type: ignore[arg-type]
+    # Construct SAP settings lazily so demo mode never requires placeholder
+    # hosts, users, or passwords. Explicit nested settings remain useful for
+    # programmatic embedding and tests.
+    sap: SAPConnectionSettings | None = None
     policy: PolicySettings = Field(default_factory=PolicySettings)
     result: ResultLimitSettings = Field(default_factory=ResultLimitSettings)
     adt: ADTConnectionSettings = Field(default_factory=ADTConnectionSettings)
+
+    def sap_settings(self) -> SAPConnectionSettings:
+        if self.sap is not None:
+            return self.sap
+        return SAPConnectionSettings()  # type: ignore[call-arg]

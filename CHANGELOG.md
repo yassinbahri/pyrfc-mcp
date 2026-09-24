@@ -6,6 +6,28 @@ All notable changes will be documented here. This project follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
+### Added
+
+- A supported synthetic demo backend that exercises the real discovery,
+  policy, validation, result-limit, and MCP layers without SAP or PyRFC.
+- The `rfc-mcp --demo` first-run path with safe demo allowlist defaults.
+- The `rfc-mcp doctor` preflight command, optional live connectivity testing,
+  redacted output, and machine-readable JSON reports.
+- Trusted Publishing workflow for secret-free, release-triggered PyPI uploads.
+
+### Changed
+
+- SAP connection settings are loaded only when the SAP backend is selected.
+- Connection consumers now depend on a typed connection-manager protocol,
+  allowing production and synthetic transports to share the same runtime.
+- Package metadata now includes project links and expanded discovery keywords.
+
+### Fixed
+
+- CodeQL initialization and analysis actions now use the same release.
+
 ## [0.1.0] - 2026-09-04
 
 ### Added

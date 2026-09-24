@@ -3,8 +3,8 @@ mcp<2.0; both share the same @tool()/Context/lifespan surface). Construction
 requires no SAP connectivity — the ConnectionPool connects lazily on first
 real use, so `mcp dev` can list tools and validate their schemas with zero
 SAP access. AppSettings() does require connection *parameters* to be
-configured (see .env.example), even if they're placeholders that are never
-actually reached.
+configured (see .env.example) only when the SAP backend is selected. The
+synthetic demo backend needs neither SAP credentials nor PyRFC.
 """
 
 from __future__ import annotations
@@ -17,35 +17,43 @@ import anyio
 from mcp.server.mcpserver import MCPServer
 
 from rfc_mcp.adt.client import ADTClient
-from rfc_mcp.config import AppSettings
+from rfc_mcp.config import AppSettings, BackendMode
+from rfc_mcp.demo import DEMO_READ_ALLOW_PATTERNS, DemoConnectionPool
 from rfc_mcp.discovery.catalog import FunctionCatalog
 from rfc_mcp.execution.invoker import ExecutionInvoker
 from rfc_mcp.execution.policy import ExecutionPolicy
 from rfc_mcp.execution.result_transform import ResultLimitPolicy
 from rfc_mcp.logging_config import configure_logging
-from rfc_mcp.sap.connection import ConnectionPool, PooledCaller
+from rfc_mcp.sap.connection import ConnectionManager, ConnectionPool, PooledCaller
 
 
 @dataclass
 class AppContext:
-    pool: ConnectionPool
+    pool: ConnectionManager
     catalog: FunctionCatalog
     invoker: ExecutionInvoker
     adt_client: ADTClient | None
 
 
-@asynccontextmanager
-async def app_lifespan(server: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
-    settings = AppSettings()
-    configure_logging(settings.log_level)
+def build_app_context(settings: AppSettings) -> AppContext:
+    """Build the runtime without connecting until the first operation."""
+    if settings.backend is BackendMode.DEMO:
+        pool: ConnectionManager = DemoConnectionPool()
+        policy_settings = settings.policy
+        if not policy_settings.read_allow_patterns:
+            policy_settings = policy_settings.model_copy(
+                update={"read_allow_patterns": DEMO_READ_ALLOW_PATTERNS}
+            )
+    else:
+        pool = ConnectionPool(settings.sap_settings())
+        policy_settings = settings.policy
 
-    pool = ConnectionPool(settings.sap)
     catalog = FunctionCatalog(
         PooledCaller(pool),
         cache_ttl_seconds=settings.discovery_cache_ttl_seconds,
         structure_resolution_max_depth=settings.structure_resolution_max_depth,
     )
-    policy = ExecutionPolicy(settings.policy)
+    policy = ExecutionPolicy(policy_settings)
     invoker = ExecutionInvoker(
         pool,
         catalog,
@@ -59,15 +67,27 @@ async def app_lifespan(server: MCPServer[AppContext]) -> AsyncIterator[AppContex
     # Optional: None unless RFC_MCP_ADT_ENABLED=true. read_abap_source
     # doesn't need this to be set — it falls back to RFC automatically when
     # it's None — see docs/adt_rfc_integration_plan.md.
-    adt_client = ADTClient(settings.adt) if settings.adt.enabled else None
+    adt_client = (
+        ADTClient(settings.adt)
+        if settings.backend is BackendMode.SAP and settings.adt.enabled
+        else None
+    )
+    return AppContext(pool=pool, catalog=catalog, invoker=invoker, adt_client=adt_client)
+
+
+@asynccontextmanager
+async def app_lifespan(server: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
+    settings = AppSettings()
+    configure_logging(settings.log_level)
+    context = build_app_context(settings)
 
     try:
-        yield AppContext(pool=pool, catalog=catalog, invoker=invoker, adt_client=adt_client)
+        yield context
     finally:
-        await anyio.to_thread.run_sync(invoker.close)
-        await anyio.to_thread.run_sync(pool.close_all)
-        if adt_client is not None:
-            adt_client.close()
+        await anyio.to_thread.run_sync(context.invoker.close)
+        await anyio.to_thread.run_sync(context.pool.close_all)
+        if context.adt_client is not None:
+            context.adt_client.close()
 
 
 # This server has two transports internally (RFC and ADT) but deliberately
