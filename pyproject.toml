@@ -1,16 +1,19 @@
 [project]
 name = "pyrfc-mcp"
-version = "0.1.0"
-description = "MCP server exposing SAP RFC-enabled function modules to AI agents"
+version = "0.2.0"
+description = "A policy-controlled MCP server for discovering and calling SAP RFC functions"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Yassin Bahri" }]
-keywords = ["abap", "mcp", "sap", "rfc"]
+keywords = ["abap", "ai-agents", "bapi", "mcp", "model-context-protocol", "sap", "rfc"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 requires-python = ">=3.11,<3.12"
@@ -21,6 +24,13 @@ dependencies = [
     "pydantic>=2.10,<3",
     "pydantic-settings>=2.7,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yassinbahri/pyrfc-mcp"
+Documentation = "https://github.com/yassinbahri/pyrfc-mcp#readme"
+Changelog = "https://github.com/yassinbahri/pyrfc-mcp/blob/main/CHANGELOG.md"
+Issues = "https://github.com/yassinbahri/pyrfc-mcp/issues"
+Repository = "https://github.com/yassinbahri/pyrfc-mcp.git"
 
 [project.optional-dependencies]
 # PyRFC 3.3.1 is yanked and its upstream repository is archived. It remains

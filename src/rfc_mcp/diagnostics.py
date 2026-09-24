@@ -95,9 +95,7 @@ def run_diagnostics(
             sap_settings = settings.sap_settings()
         except ValidationError as exc:
             checks.append(
-                DiagnosticCheck(
-                    "configuration", CheckStatus.FAIL, _configuration_error(exc)
-                )
+                DiagnosticCheck("configuration", CheckStatus.FAIL, _configuration_error(exc))
             )
             return DiagnosticReport(settings.backend.value, tuple(checks))
 
