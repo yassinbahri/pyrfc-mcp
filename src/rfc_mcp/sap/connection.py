@@ -9,8 +9,8 @@ import logging
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
-from typing import Any
+from contextlib import AbstractContextManager, contextmanager
+from typing import Any, Protocol
 
 from rfc_mcp.config import SAPConnectionSettings
 from rfc_mcp.sap.exceptions import (
@@ -21,6 +21,16 @@ from rfc_mcp.sap.exceptions import (
 )
 
 logger = logging.getLogger("rfc_mcp.sap.connection")
+
+
+class ConnectionManager(Protocol):
+    def acquire(self) -> AbstractContextManager[Any]: ...
+
+    def checkout(self) -> Any: ...
+
+    def release(self, conn: Any, *, reusable: bool = True) -> None: ...
+
+    def close_all(self) -> None: ...
 
 
 def _import_pyrfc() -> Any:
@@ -146,7 +156,7 @@ class PooledCaller:
     the discovery and execution layers: acquire, call, release, per call.
     """
 
-    def __init__(self, pool: ConnectionPool) -> None:
+    def __init__(self, pool: ConnectionManager) -> None:
         self._pool = pool
 
     def call(self, function_name: str, **params: Any) -> Any:

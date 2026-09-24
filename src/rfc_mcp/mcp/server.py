@@ -39,7 +39,7 @@ async def app_lifespan(server: MCPServer[AppContext]) -> AsyncIterator[AppContex
     settings = AppSettings()
     configure_logging(settings.log_level)
 
-    pool = ConnectionPool(settings.sap)
+    pool = ConnectionPool(settings.sap_settings())
     catalog = FunctionCatalog(
         PooledCaller(pool),
         cache_ttl_seconds=settings.discovery_cache_ttl_seconds,

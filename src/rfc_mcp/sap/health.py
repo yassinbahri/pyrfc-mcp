@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rfc_mcp.sap.connection import ConnectionPool
+from rfc_mcp.sap.connection import ConnectionManager
 from rfc_mcp.sap.exceptions import SAPError
 
 
@@ -13,7 +13,7 @@ class HealthCheckResult:
     exc: SAPError | None = None
 
 
-def check_connectivity(pool: ConnectionPool) -> HealthCheckResult:
+def check_connectivity(pool: ConnectionManager) -> HealthCheckResult:
     """Acquire a connection and ping it. Does not raise — failures are
     reported in the result so callers (smoke tests, health tools) can
     distinguish logon vs. communication vs. other errors from `detail`, or

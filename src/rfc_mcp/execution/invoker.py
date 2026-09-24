@@ -23,7 +23,7 @@ from rfc_mcp.execution.result_transform import (
     ResultLimitPolicy,
     to_json_safe,
 )
-from rfc_mcp.sap.connection import ConnectionPool
+from rfc_mcp.sap.connection import ConnectionManager
 from rfc_mcp.sap.exceptions import translate_pyrfc_exception
 
 logger = logging.getLogger("rfc_mcp.execution.invoker")
@@ -43,7 +43,7 @@ class _ActiveTransaction:
 class ExecutionInvoker:
     def __init__(
         self,
-        pool: ConnectionPool,
+        pool: ConnectionManager,
         catalog: FunctionCatalog,
         policy: ExecutionPolicy,
         *,

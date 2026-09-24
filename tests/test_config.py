@@ -5,6 +5,8 @@ from pydantic import ValidationError
 
 from rfc_mcp.config import (
     ADTConnectionSettings,
+    AppSettings,
+    BackendMode,
     PolicyMode,
     PolicySettings,
     ResultLimitSettings,
@@ -30,6 +32,13 @@ def test_direct_addressing_mode_valid():
     assert kwargs["ashost"] == "sap.example.com"
     assert kwargs["sysnr"] == "00"
     assert "mshost" not in kwargs
+
+
+def test_demo_app_settings_do_not_require_sap_configuration():
+    settings = AppSettings(backend=BackendMode.DEMO)
+
+    assert settings.backend is BackendMode.DEMO
+    assert settings.sap is None
 
 
 def test_load_balanced_addressing_mode_valid():
