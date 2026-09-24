@@ -18,6 +18,16 @@ def test_default_cli_preserves_configured_backend(monkeypatch) -> None:
     monkeypatch.setenv("RFC_MCP_BACKEND", "sap")
     monkeypatch.setattr(__main__.mcp, "run", lambda: None)
 
-    __main__.main([])
+    exit_code = __main__.main([])
 
     assert __main__.os.environ["RFC_MCP_BACKEND"] == "sap"
+    assert exit_code == 0
+
+
+def test_doctor_prints_json_report(monkeypatch, capsys) -> None:
+    monkeypatch.delenv("RFC_MCP_BACKEND", raising=False)
+
+    exit_code = __main__.main(["--demo", "--json", "doctor"])
+
+    assert exit_code == 0
+    assert '"backend": "demo"' in capsys.readouterr().out
